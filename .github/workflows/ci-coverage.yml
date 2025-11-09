@@ -1,0 +1,114 @@
+# CI/CD Workflow with 80% Code Coverage
+# This workflow runs tests and enforces 80% code coverage on all pushes and pull requests
+
+name: CI with 80% Coverage
+
+on:
+  push:
+    branches: [ main, master, develop, feature/* ]
+  pull_request:
+    branches: [ main, master, develop ]
+
+env:
+  COVERAGE_THRESHOLD: 80
+
+jobs:
+  test-and-coverage:
+    name: "Tests & Coverage (80%)"
+    runs-on: ubuntu-latest
+    
+    steps:
+    # 1. Checkout code
+    - name: 📥 Checkout repository
+      uses: actions/checkout@v4
+    
+    # 2. Setup Node.js
+    - name: 🔧 Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+    
+    # 3. Install dependencies
+    - name: 📦 Install dependencies
+      run: npm ci
+    
+    # 4. Run tests with coverage
+    - name: 🧪 Run tests with coverage
+      run: |
+        echo "Running tests with coverage analysis..."
+        echo "Coverage threshold: ${{ env.COVERAGE_THRESHOLD }}%"
+        npm run test:coverage
+    
+    # 5. Verify coverage threshold
+    - name: ✅ Verify 80% coverage threshold
+      run: |
+        echo "Verifying coverage meets 80% threshold..."
+        
+        # Run tests again and capture output
+        COVERAGE_OUTPUT=$(npm run test:coverage 2>&1)
+        
+        # Extract coverage percentage from "All files" line
+        COVERAGE_LINE=$(echo "$COVERAGE_OUTPUT" | grep "All files" | head -1)
+        
+        if [ -n "$COVERAGE_LINE" ]; then
+          echo "Coverage line found:"
+          echo "$COVERAGE_LINE"
+          echo ""
+          
+          # Extract the first percentage (Statements coverage)
+          COVERAGE_PERCENT=$(echo "$COVERAGE_LINE" | grep -oE '[0-9]+(\.[0-9]+)?' | head -1)
+          
+          if [ -n "$COVERAGE_PERCENT" ]; then
+            echo "📊 Coverage: $COVERAGE_PERCENT%"
+            echo "🎯 Threshold: ${{ env.COVERAGE_THRESHOLD }}%"
+            
+            # Convert to integer for comparison
+            COVERAGE_INT=$(echo "$COVERAGE_PERCENT" | cut -d'.' -f1)
+            THRESHOLD=${{ env.COVERAGE_THRESHOLD }}
+            
+            if [ "$COVERAGE_INT" -lt "$THRESHOLD" ]; then
+              echo ""
+              echo "❌ COVERAGE FAILED"
+              echo "   Current: $COVERAGE_PERCENT%"
+              echo "   Required: $THRESHOLD%"
+              echo "   Missing: $((THRESHOLD - COVERAGE_INT))%"
+              echo ""
+              echo "Please add more tests to reach $THRESHOLD% coverage."
+              exit 1
+            else
+              echo ""
+              echo "✅ COVERAGE PASSED"
+              echo "   Excellent! Coverage is $COVERAGE_PERCENT%"
+              echo "   Required: $THRESHOLD%"
+              echo ""
+            fi
+          else
+            echo "⚠️  Could not extract coverage percentage"
+            exit 1
+          fi
+        else
+          echo "⚠️  Could not find coverage information"
+          exit 1
+        fi
+    
+    # 6. Upload coverage report (optional)
+    - name: 📊 Upload coverage report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-report
+        path: coverage/
+        retention-days: 30
+    
+    # 7. Summary
+    - name: 📝 Summary
+      if: always()
+      run: |
+        echo "## Test Results Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "✅ All tests passed" >> $GITHUB_STEP_SUMMARY
+        echo "✅ Coverage threshold met (80%)" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Coverage Report" >> $GITHUB_STEP_SUMMARY
+        echo "Check the artifacts for detailed coverage report" >> $GITHUB_STEP_SUMMARY

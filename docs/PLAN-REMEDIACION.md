@@ -434,4 +434,3 @@ Esta vulnerabilidad es la más grave del sistema porque es la **raíz de todas l
 | 7 | Configurar HTTPS con Nginx + Certbot (Vuln #11) | 2 horas |
 | 8 | Implementar audit logs con Winston (Vuln #10) | 1 hora |
 
-> **Nota**: Las prioridades 1-4 deben implementarse antes de cualquier despliegue en un entorno accesible desde internet. Las prioridades 5-8 deben completarse dentro del mismo sprint de remediación.
